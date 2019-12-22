@@ -71,7 +71,7 @@ function showChangesets(lat, lon, zoom, user, since){
 	request.send();
 }
 var getChangesets = function(){
-	let [lat, lon, zoom] = document.getElementById("url").value;
+	let [lat, lon, zoom] = getLatLonZoom(document.getElementById("url").value);
 	let user = document.getElementById("user").value;
 	let since = document.getElementById("since").value;
 	showChangesets(lat, lon, zoom, user, since)
