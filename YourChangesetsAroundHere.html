@@ -1,0 +1,81 @@
+<html>
+<head>
+</head>
+<body>
+<h1>Your changesets around here</h1>
+<ul>
+	<li>user: <input type="text" size="20" id="user" value="muramototomoya">
+	<li>Lat: <input type="text" size="10" id="lat" value="34.3"></li>
+	<li>Lon: <input type="text" size="10" id="lon" value="136.0"></li>
+	<li>Zoom: <input type="text" size="10" id="zoom" value="14"></li>
+	<li>Since: <input type="text" size="30" id="since" value="2019-11-01T00:00:00"></li>
+</ul>
+<input type="button" value="Get changesets" onclick="getChangesets()">
+<h2>Changesets</h2>
+<p><span id="list"></span></p>
+<p><span id="results"></span></p>
+<script>
+
+
+function latLonZoomToBbox(lat, lon, zoom) {
+	const part = Math.pow(0.5,zoom);
+	const minlon = Number(lon) - 360*part/2;
+	const maxlon = Number(lon) + 360*part/2;
+	const minlat = Number(lat) - 180*part/2;
+	const maxlat = Number(lat) + 180*part/2;
+	return [minlon, minlat, maxlon, maxlat];
+
+}
+
+function showChangesets(lat, lon, zoom, user, since){
+	const [minlon, minlat, maxlon, maxlat] = latLonZoomToBbox(lat, lon, zoom);
+	const bbox = '' + minlon + ',' + minlat + ',' + maxlon + ',' + maxlat;
+
+
+	let request = new XMLHttpRequest();
+	request.open('GET', 'https://api.openstreetmap.org/api/0.6/changesets?bbox=' + bbox + '&display_name=' + user + '&time=' + since, true);
+	//request.responseType = 'json';
+	request.onload = function () {
+		const data = this.response;
+		//document.getElementById('results').innerText = data;
+		let changesets = request.responseXML.getElementsByTagName("changeset");
+		let changesetlist = '<ul>';
+		for (let i = 0; i < changesets.length; i++) {
+			changeset = changesets[i];
+			let id = changeset.getAttribute("id");
+			let tags = changeset.getElementsByTagName("tag");
+			//alert(JSON.stringify(changeset.getElementsByTagName("tag")));
+
+			let comment = "";
+			for (let j = 0; j < tags.length; j++) {
+				tag = tags[j];
+				c = tag.getAttribute("k");
+
+				if (c == "comment"){
+					comment = tag.getAttribute("v");
+					break;
+				}
+			}
+			changesetlist += '<li><a href="https://www.openstreetmap.org/changeset/' + id + '">' + comment + '</a>,  ' + changeset.getAttribute("created_at") + '</li>';
+		}
+		changesetlist += '</ul>';
+
+		document.getElementById('list').innerHTML = changesetlist;
+
+
+	};
+	request.send();
+}
+var getChangesets = function(){
+	let lat = document.getElementById("lat").value;
+	let lon = document.getElementById("lon").value;
+	let zoom = document.getElementById("zoom").value;
+	let user = document.getElementById("user").value;
+	let since = document.getElementById("since").value;
+	showChangesets(lat, lon, zoom, user, since)
+}
+
+//showChangesets(34.3037, 136.0065, 14, 'muramototomoya');
+</script>
+</body>
+</html>
