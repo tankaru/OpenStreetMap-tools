@@ -5,13 +5,15 @@
 <h1>Your changesets around here</h1>
 <ul>
 	<li>user: <input type="text" size="20" id="user" value="muramototomoya">
-	<li>OpenStreetMap URL: <input type="text" size="100" id="url" value="https://www.openstreetmap.org/#map=15/34.3054/136.0145"></li>
+	<li>OpenStreetMap URL: <input type="url" size="100" id="url" value="https://www.openstreetmap.org/#map=15/34.3054/136.0145"></li>
 	<li>Since: <input type="text" size="30" id="since" value="2019-11-01T00:00:00"></li>
 </ul>
 <input type="button" value="Get changesets" onclick="getChangesets()">
 <h2>Changesets</h2>
 <p><span id="list"></span></p>
 <p><span id="results"></span></p>
+<hr/>
+<p>Check <i><a href="http://yosmhm.neis-one.org/">Your OSM Heat Map</a></i> also.</p>
 <script>
 
 function getLatLonZoom(url) {
@@ -20,7 +22,7 @@ function getLatLonZoom(url) {
 	const [, zoom, lat, lon] = match;
 	return [lat, lon, zoom];
   }
-	  
+}
 function latLonZoomToBbox(lat, lon, zoom) {
 	const part = Math.pow(0.5,zoom);
 	const minlon = Number(lon) - 360*part/2;
@@ -74,7 +76,7 @@ var getChangesets = function(){
 	let [lat, lon, zoom] = getLatLonZoom(document.getElementById("url").value);
 	let user = document.getElementById("user").value;
 	let since = document.getElementById("since").value;
-	showChangesets(lat, lon, zoom, user, since)
+	showChangesets(lat, lon, zoom, user, since);
 }
 
 //showChangesets(34.3037, 136.0065, 14, 'muramototomoya');
