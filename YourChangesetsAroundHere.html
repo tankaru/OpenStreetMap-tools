@@ -5,9 +5,7 @@
 <h1>Your changesets around here</h1>
 <ul>
 	<li>user: <input type="text" size="20" id="user" value="muramototomoya">
-	<li>Lat: <input type="text" size="10" id="lat" value="34.3"></li>
-	<li>Lon: <input type="text" size="10" id="lon" value="136.0"></li>
-	<li>Zoom: <input type="text" size="10" id="zoom" value="14"></li>
+	<li>OpenStreetMap URL: <input type="text" size="100" id="url" value="https://www.openstreetmap.org/#map=15/34.3054/136.0145"></li>
 	<li>Since: <input type="text" size="30" id="since" value="2019-11-01T00:00:00"></li>
 </ul>
 <input type="button" value="Get changesets" onclick="getChangesets()">
@@ -16,7 +14,13 @@
 <p><span id="results"></span></p>
 <script>
 
-
+function getLatLonZoom(url) {
+  const match = url.match(/www\.openstreetmap\.org.*map=(\d{1,2})\/(-?\d[0-9.]*)\/(-?\d[0-9.]*)/);
+  if (match) {
+	const [, zoom, lat, lon] = match;
+	return [lat, lon, zoom];
+  }
+	  
 function latLonZoomToBbox(lat, lon, zoom) {
 	const part = Math.pow(0.5,zoom);
 	const minlon = Number(lon) - 360*part/2;
@@ -67,9 +71,7 @@ function showChangesets(lat, lon, zoom, user, since){
 	request.send();
 }
 var getChangesets = function(){
-	let lat = document.getElementById("lat").value;
-	let lon = document.getElementById("lon").value;
-	let zoom = document.getElementById("zoom").value;
+	let [lat, lon, zoom] = document.getElementById("url").value;
 	let user = document.getElementById("user").value;
 	let since = document.getElementById("since").value;
 	showChangesets(lat, lon, zoom, user, since)
