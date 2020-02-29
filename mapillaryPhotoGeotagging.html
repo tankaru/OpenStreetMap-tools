@@ -1,0 +1,154 @@
+<html>
+<head>
+<style type="text/css">
+
+</style>
+</head>
+<body>
+<h1>Download Mapillary photo with geotag <strong>(Windows only)</strong></h1>
+<ul>
+<li>Mapillary URL: <input type="url" size="160" id="mapillaryUrl" value="https://www.mapillary.com/app/?lat=37.48689999999999&lng=139.9298&z=20&pKey=JQJrg5HaJ4Q0QvYCP-L9GQ&focus=photo&x=0.7402020403448308&y=0.5212907903987006&zoom=0">
+<li>Save Folder: <input type="text" size="160" id="savepath" value="C:\temp\">
+<li>Exiftool Path: <input type="text" size="160" id="exiftool" value="C:\work\exiftool.exe">
+</ul>
+<input type="button" value="Get Geotagging script" onclick="getscript()">
+
+<ul>
+	<li>Lat:<span id="lat"></span>, Lon:<span id="lon"></span></li>
+	<li>Date/Time:<span id="time"></span></li>
+	<li>User:<span id="user"></span></li>
+</ul>
+
+Run script in Command prompt: <input type="script" size="160" id="geotaggingscript" value="">
+<script>
+
+
+var getscript = function(){
+	var murl = document.getElementById("mapillaryUrl").value;
+	const [,pKey] = murl.match(/pKey=([^&]*)/);
+
+	let request = new XMLHttpRequest();
+	const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTozZmVkOTE4NmI3YzRkMGEw&image_keys=' + pKey;
+	
+	request.open('GET', url , true);
+	request.onload = function () {
+		const data = this.response;
+		const jsondata = JSON.parse(data);
+		let features = jsondata["features"];
+		let feature = features[0];
+		const properties = feature["properties"];
+		const geometry = feature["geometry"];
+		
+		const lat = geometry["coordinates"][1];
+		const lon = geometry["coordinates"][0];
+		const username = properties["username"];
+		const captured_at = properties["captured_at"];
+		
+		document.getElementById('lat').innerText = lat;
+		document.getElementById('lon').innerText = lon;
+		document.getElementById('user').innerText = username;
+		document.getElementById('time').innerText = captured_at;
+		
+		const exiftool = document.getElementById('exiftool').value;
+		const savepath = document.getElementById('savepath').value + pKey + '.jpg';
+		
+		const src = 'https://images.mapillary.com/' + pKey + '/thumb-2048.jpg';
+
+		
+		const geotaggingScript = 'bitsadmin /transfer download ' + src + ' ' + savepath + ' & ' + exiftool + ' -overwrite_original ' + savepath + ' -GPSLatitude=' + lat + ' -GPSLongitude=' + lon + ' -AllDates=' + captured_at + ' -artist=' + username;
+		document.getElementById('geotaggingscript').value = geotaggingScript;
+	}
+	request.send();
+		
+
+
+}
+
+function addImageList(features, num){
+	let list = "";
+		
+	for (let i = 0; i < features.length; i++) {
+		let feature = features[i];
+		const properties = feature["properties"];
+		const geometry = feature["geometry"];
+		//alert(JSON.stringify(changeset.getElementsByTagName("tag")));
+
+
+
+		list += '<tr><th>'+ (num + i + 1) +'</th><td>' +JSON.stringify(properties["captured_at"]) + '</td><td><a href="https://images.mapillary.com/' + properties["key"] + '/thumb-320.jpg">' + JSON.stringify(properties["key"]) + '</a></td><td>' + JSON.stringify(properties["username"]) + '</td></tr>';
+		
+		let content = '<a target="_blank" href="https://www.mapillary.com/app/?pKey=' + properties["key"] + '">' + '<img src="https://images.mapillary.com/' + properties["key"] + '/thumb-320.jpg">'  + '</a><br />By ' + properties["username"] + ' , CC BY-SA';
+		let popup = L.popup().setContent(content);
+		L.marker([geometry["coordinates"][1] ,geometry["coordinates"][0]]).bindPopup(popup).addTo(map).on('click', function () {
+
+		});
+	}
+
+	document.getElementById('list').innerHTML += list;
+}
+
+function addImages(nextUrl, num){
+	let request = new XMLHttpRequest();
+	request.open('GET', nextUrl , true);
+	request.onload = function () {
+		const data = this.response;
+		const headers = this.getResponseHeader('Link');
+
+		const jsondata = JSON.parse(data);
+		let features = jsondata["features"];
+		
+		addImageList(features, num);
+		if (features.length == 200){
+			const r = parseLinkHeader(this.getResponseHeader('Link'));
+			addImages(r['next']['href'], num+200);
+		}
+	}
+	request.send();
+}
+
+
+function getBboxImages(minlon, minlat, maxlon, maxlat){
+
+	const bbox = '' + minlon + ',' + minlat + ',' + maxlon + ',' + maxlat;
+	const url = 'https://a.mapillary.com/v3/images?per_page=200&client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTozZmVkOTE4NmI3YzRkMGEw&bbox=' + bbox;
+	addImages(url,0);
+
+}
+var getImages = function(){
+	//let [lat, lon, zoom] = getLatLonZoom(document.getElementById("url").value);
+	//const [minlon, minlat, maxlon, maxlat] = latLonZoomToBbox(lat, lon, zoom);
+	const minlon = document.getElementById('minlon').innerText;
+	const minlat = document.getElementById('minlat').innerText;
+	const maxlon = document.getElementById('maxlon').innerText;
+	const maxlat = document.getElementById('maxlat').innerText;
+	getBboxImages(minlon, minlat, maxlon, maxlat);
+}
+
+//getImages(35.46060, 139.62646, 19);
+
+//http://ktgis.net/service/leafletlearn/index.html
+function initMap() {
+  //地図を表示するdiv要素のidを設定
+  map = L.map('mapcontainer');
+  //地図の中心とズームレベルを指定
+  map.setView([35.46045, 139.62663], 16);
+
+  //https://stackoverflow.com/questions/22948096/get-the-bounding-box-of-the-visible-leaflet-map
+  map.on('moveend', function() {
+	document.getElementById('minlat').innerText = map.getBounds().getSouth();
+	document.getElementById('maxlat').innerText = map.getBounds().getNorth();
+	document.getElementById('minlon').innerText = map.getBounds().getWest();
+	document.getElementById('maxlon').innerText = map.getBounds().getEast();
+});
+  //表示するタイルレイヤのURLとAttributionコントロールの記述を設定して、地図に追加する
+  L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	  attribution: "(C)<a href='https://www.openstreetmap.org/copyright' target='_blank'>OpenStreetMap contributors</a>",
+	  maxZoom: 21,
+	  maxNativeZoom: 19
+  }).addTo(map);
+}
+
+</script>
+</body>
+</html>
+
