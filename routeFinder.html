@@ -1,0 +1,151 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+<style type="text/css">
+
+</style>
+</head>
+<body onload="initMap()">
+<h1>[TEST]Find route</h1>
+<div style="float:left">
+<div id="mapcontainer" style="width:600px;height:600px"></div>
+<ul style="display:none;">
+	<li>min lat: <span id="minlat"></span></li>
+	<li>max lat: <span id="maxlat"></span></li>
+	<li>min lon: <span id="minlon"></span></li>
+	<li>max lon: <span id="maxlon"></span></li>
+</ul>
+
+<input type="button" value="Find route" onclick="findRoute()">
+<ul>
+<li>Routing is powered by <a href="https://www.graphhopper.com/">GraphHopper API</a></li>
+<li>Images from <a href="https://www.mapillary.com/">Mapillary</a></li>
+</ul>
+</div>
+
+
+
+<h2>Instructions</h2>
+<div id="results"></div>
+
+
+<script src="utils.js"></script>
+<script>
+
+let map;
+let start_marker;
+let end_marker;
+
+var findRoute = function(){
+
+	const start = start_marker.getLatLng();
+	const end = end_marker.getLatLng();
+	let startlon = start.lng;
+	let startlat = start.lat;
+	let endlon = end.lng;
+	let endlat = end.lat;
+	//alert(start.);
+	let request = new XMLHttpRequest();
+	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=car&locale=ja&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
+	//alert(url);
+	request.open('GET', url , true);
+	request.onload = function () {
+		const results = JSON.parse(this.response);
+		const points = decodePath(results["paths"][0]["points"]);
+		//alert(JSON.stringify(points));
+		//alert(JSON.stringify(L.GeoJSON.coordsToLatLngs(points)));
+		
+		L.polyline(L.GeoJSON.coordsToLatLngs(points), { color: 'blue', weight: 5 }).addTo(map);
+		let instructions = results["paths"][0]["instructions"];
+		let tableresults = "<table>";
+		for (let i=0; i < instructions.length; i++){
+			const turnpoint = points[instructions[i]["interval"][0]];
+			let photopoint;
+			//画像は一つ手前のポイントで取得する
+			if (i==0) {photopoint = points[instructions[i]["interval"][0]];}
+			else {photopoint = points[instructions[i]["interval"][0]-1];}
+			
+
+			
+			let popup = L.popup({"autoClose": false, "closeOnClick": null, "maxWidth":"auto"}).setLatLng(L.GeoJSON.coordsToLatLng(turnpoint)).setContent(String(i+1)).openOn(map);
+			//let marker = L.marker(L.GeoJSON.coordsToLatLng(turnpoint)).addTo(map);
+			//let new_popup = L.popup({"autoClose": false, "closeOnClick": null});
+			//marker.bindPopup(instructions[i]["text"]+'<br />').openPopup();
+			const spanid = "mapillary" + i;
+			tableresults += "<tr><td>" + (i+1) + "</td><td>" + '<span id="' + spanid +'">' + "</td><td>" + instructions[i]["text"] + "</td></tr>";
+			//alert(JSON.stringify(photopoint));	
+			setMapillaryImage(photopoint[1], photopoint[0], turnpoint[1], turnpoint[0], spanid);
+		
+		}
+		tableresults += "</table>";
+		document.getElementById('results').innerHTML = tableresults;
+
+		
+
+
+	}
+	request.send();
+}
+
+function setMapillaryImage(lat, lon, lookat_lat, lookat_lon, spanid){
+	//document.getElementById(spanid).innerText = '(No photo)';
+	let request = new XMLHttpRequest();
+	const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTozZmVkOTE4NmI3YzRkMGEw&closeto=' + lon + ',' + lat + '&lookat=' + lookat_lon + ',' + lookat_lat +'&radius=10&pano=false';
+	//alert(url);
+	request.open('GET', url, true);
+	request.onload = function () {
+		const data = this.response;
+		const jsondata = JSON.parse(data);
+		const features = jsondata["features"];
+		const feature = features[0];
+		const properties = feature["properties"];
+			
+		document.getElementById(spanid).innerHTML = '<a href="https://images.mapillary.com/' + properties["key"] + '/thumb-1024.jpg" target="_blank"><img src="https://images.mapillary.com/' + properties["key"] + '/thumb-320.jpg" height="100"></a>' + '<br /><small>(Image CC BY-SA, by ' + properties["username"] + '</small>)';
+
+	};
+	request.send();
+	
+}
+
+//http://ktgis.net/service/leafletlearn/index.html
+function initMap() {
+  //地図を表示するdiv要素のidを設定
+  map = L.map('mapcontainer');
+  //地図の中心とズームレベルを指定
+  map.setView([35.46045, 139.62993], 16);
+
+  //https://stackoverflow.com/questions/22948096/get-the-bounding-box-of-the-visible-leaflet-map
+  map.on('moveend', function() {
+	document.getElementById('minlat').innerText = map.getBounds().getSouth();
+	document.getElementById('maxlat').innerText = map.getBounds().getNorth();
+	document.getElementById('minlon').innerText = map.getBounds().getWest();
+	document.getElementById('maxlon').innerText = map.getBounds().getEast();
+});
+
+  //表示するタイルレイヤのURLとAttributionコントロールの記述を設定して、地図に追加する
+  L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	  attribution: "(C)<a href='https://www.openstreetmap.org/copyright' target='_blank'>OpenStreetMap contributors</a>",
+	  maxZoom: 21,
+	  maxNativeZoom: 19,
+	  minZoom: 15,
+	  maxBounds: [[35.47, 139.62], [35.45, 139.64]],
+  }).addTo(map);
+  
+  //
+	map.on('click',function ( e ) {
+		if (!start_marker){
+			start_marker = L.marker( e.latlng, { draggable: true }).bindTooltip("Start").addTo( map );
+
+		} else if (!end_marker){
+			end_marker = L.marker( e.latlng, { draggable: true }).bindTooltip("End").addTo( map );
+		}
+		
+
+	} );
+}
+
+</script>
+</body>
+</html>
+
