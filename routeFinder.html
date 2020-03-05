@@ -9,7 +9,7 @@
 <body onload="initMap()">
 <h1>[TEST]Find route</h1>
 <div style="float:left">
-<div id="mapcontainer" style="width:600px;height:600px"></div>
+<div id="mapcontainer" style="width:600px;height:600px; margin:10px;"></div>
 <ul style="display:none;">
 	<li>min lat: <span id="minlat"></span></li>
 	<li>max lat: <span id="maxlat"></span></li>
@@ -27,7 +27,7 @@
 
 
 <h2>Instructions</h2>
-<div id="results"></div>
+<div id="results" style="margin: 10px;"></div>
 
 
 <script src="utils.js"></script>
@@ -39,15 +39,23 @@ let end_marker;
 
 var findRoute = function(){
 
+	//map.clearOverlays();
+	//start_marker.addTo( map );
+	//end_marker.addTo( map );
+
 	const start = start_marker.getLatLng();
 	const end = end_marker.getLatLng();
 	let startlon = start.lng;
 	let startlat = start.lat;
 	let endlon = end.lng;
 	let endlat = end.lat;
+	
+	let lang = (navigator.language) ? navigator.language : navigator.userLanguage;
+	if (lang === undefined) lang = "en";
+	lang = lang.substr(0,2).toLowerCase();
 	//alert(start.);
 	let request = new XMLHttpRequest();
-	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=car&locale=ja&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
+	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=car&locale=' + lang + '&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
 	//alert(url);
 	request.open('GET', url , true);
 	request.onload = function () {
@@ -91,7 +99,7 @@ var findRoute = function(){
 function setMapillaryImage(lat, lon, lookat_lat, lookat_lon, spanid){
 	//document.getElementById(spanid).innerText = '(No photo)';
 	let request = new XMLHttpRequest();
-	const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTozZmVkOTE4NmI3YzRkMGEw&closeto=' + lon + ',' + lat + '&lookat=' + lookat_lon + ',' + lookat_lat +'&radius=10&pano=false';
+	const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTphODE3MTc4MWM1MjE2NDk1&closeto=' + lon + ',' + lat + '&lookat=' + lookat_lon + ',' + lookat_lat +'&radius=10&pano=false';
 	//alert(url);
 	request.open('GET', url, true);
 	request.onload = function () {
@@ -133,6 +141,9 @@ function initMap() {
   }).addTo(map);
   
   //
+	start_marker = L.marker( [35.46250, 139.63112], { draggable: true }).bindTooltip("Start").addTo( map );
+	end_marker = L.marker( [35.45641,139.63028], { draggable: true }).bindTooltip("End").addTo( map );
+	/*
 	map.on('click',function ( e ) {
 		if (!start_marker){
 			start_marker = L.marker( e.latlng, { draggable: true }).bindTooltip("Start").addTo( map );
@@ -143,6 +154,8 @@ function initMap() {
 		
 
 	} );
+	*/
+
 }
 
 </script>
