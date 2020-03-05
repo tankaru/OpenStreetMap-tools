@@ -50,7 +50,8 @@ let timer;
 let count = 0;
 let maxcount;
 let finepoints;
-const earthR = 6371000; //in meter
+let route;
+
 
 //https://tech-blog.s-yoshiki.com/2018/05/92/
 function hubeny(lat1, lng1, lat2, lng2) {
@@ -145,7 +146,7 @@ var findRoute = function(){
 	let endlon = end.lng;
 	let endlat = end.lat;
 	
-	
+
 
 	let request = new XMLHttpRequest();
 	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=car&locale=ja&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
@@ -158,9 +159,11 @@ var findRoute = function(){
 		finepoints = dividePoints(points, 10);
 		maxcount = finepoints.length;
 
-	
-		L.polyline(L.GeoJSON.coordsToLatLngs(finepoints), { color: 'blue', weight: 5 }).addTo(map);
+		route.remove();
+		route = L.polyline(L.GeoJSON.coordsToLatLngs(finepoints), { color: 'blue', weight: 5 }).addTo(map);
+		//route.redraw();
 		
+		moveImage(1);
 
 
 	}
