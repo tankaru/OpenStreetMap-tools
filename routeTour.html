@@ -159,7 +159,7 @@ var findRoute = function(){
 		finepoints = dividePoints(points, 10);
 		maxcount = finepoints.length;
 
-		route.remove();
+		//route.remove();
 		route = L.polyline(L.GeoJSON.coordsToLatLngs(finepoints), { color: 'blue', weight: 5 }).addTo(map);
 		//route.redraw();
 		
