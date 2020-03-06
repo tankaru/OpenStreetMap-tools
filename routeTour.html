@@ -9,7 +9,7 @@
 </style>
 </head>
 <body onload="initMap()">
-<h1>[TEST]Route view simulator</h1>
+<h1>[pre-Alpha]Route view simulator</h1>
 <div style="float:left">
 <div id='mapcontainer' style='width: 640px; height: 480px;margin: 10px;'></div>
 
@@ -146,7 +146,7 @@ var findRoute = function(){
 	let endlon = end.lng;
 	let endlat = end.lat;
 	
-
+	count = 0;
 
 	let request = new XMLHttpRequest();
 	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=car&locale=ja&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
@@ -160,8 +160,8 @@ var findRoute = function(){
 		maxcount = finepoints.length;
 
 		//route.remove();
-		route = L.polyline(L.GeoJSON.coordsToLatLngs(finepoints), { color: 'blue', weight: 5 }).addTo(map);
-		//route.redraw();
+		route.setLatLngs(L.GeoJSON.coordsToLatLngs(finepoints));
+		route.redraw();
 		
 		moveImage(1);
 
@@ -267,6 +267,7 @@ function initMap() {
 	start_marker = L.marker( [35.461171, 139.630570], { draggable: true }).bindTooltip("Start").addTo( map );
 	end_marker = L.marker( [35.459693, 139.628883], { draggable: true }).bindTooltip("End").addTo( map );
 	present_marker = L.marker(L.GeoJSON.coordsToLatLng([35.461171, 139.630570])).bindTooltip("Present").addTo(map);
+	route = L.polyline([], { color: 'blue', weight: 5 }).addTo(map);
 
 }
 
