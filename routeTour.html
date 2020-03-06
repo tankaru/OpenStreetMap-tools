@@ -45,6 +45,8 @@ let map;
 let start_marker;
 let end_marker;
 let present_marker;
+let mly_start_marker;
+let mly_end_marker;
 var mly;
 let timer;
 let count = 0;
@@ -147,7 +149,15 @@ var findRoute = function(){
 	let endlat = end.lat;
 	
 	count = 0;
+	
+	//add start/end marker on mapillary viewer
+	//how to add text to marker?
+	mly_start_marker = new Mapillary.MarkerComponent.SimpleMarker('mly_start_marker',{ lat: start.lat, lon: start.lng });
+	mly_end_marker = new Mapillary.MarkerComponent.SimpleMarker('mly_end_marker',{ lat: end.lat, lon: end.lng });
+	var markerComponent = mly.getComponent('marker');
+	markerComponent.add([mly_start_marker, mly_end_marker]);
 
+	//add route path
 	let request = new XMLHttpRequest();
 	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=car&locale=ja&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
 	//alert(url);
@@ -162,6 +172,32 @@ var findRoute = function(){
 		//route.remove();
 		route.setLatLngs(L.GeoJSON.coordsToLatLngs(finepoints));
 		route.redraw();
+		
+		//add markers as a path on mapillary viewer
+		let markers = [];
+		for (i=0; i<finepoints.length-1; i++){
+			let marker = new Mapillary.MarkerComponent.CircleMarker(
+				i.toString(),
+				{lat: finepoints[i][1], lon: finepoints[i][0]},
+				{
+
+					color: 0x0000FF,
+					opacity: 0.8,
+
+					radius: 0.8,
+				}
+			);
+			markers.push(marker);
+		}
+
+		let markerComponent = mly.getComponent('marker');
+		markerComponent.add(markers);
+		markerComponent.on(
+			Mapillary.MarkerComponent.MarkerComponent.changed,
+			function(e) {
+				console.log('Marker changed:', e.marker.id, e.marker.latLon);
+			}
+		);
 		
 		moveImage(1);
 
@@ -209,7 +245,7 @@ function moveImage(move){
 			const feature = features[0];
 			const properties = feature["properties"];
 			const key = properties["key"];
-			console.log(key);
+			//console.log(key);
 			mly.moveToKey(key)
 				.then(
 					function(node) { console.log(node.key); },
@@ -240,6 +276,8 @@ function initMap() {
 		{
 			component: {
 				cover: false,
+				marker: true,
+				popup: true,
 			},
 		});
   //地図を表示するdiv要素のidを設定
@@ -268,7 +306,19 @@ function initMap() {
 	end_marker = L.marker( [35.459693, 139.628883], { draggable: true }).bindTooltip("End").addTo( map );
 	present_marker = L.marker(L.GeoJSON.coordsToLatLng([35.461171, 139.630570])).bindTooltip("Present").addTo(map);
 	route = L.polyline([], { color: 'blue', weight: 5 }).addTo(map);
+	/*
+	mly_start_marker = new Mapillary.MarkerComponent.SimpleMarker('mly_start_marker',{ lat: 35.461171, lon: 139.630570 });
+	mly_end_marker = new Mapillary.MarkerComponent.SimpleMarker('mly_end_marker',{ lat: 35.459693, lon: 139.628883 });
+	var markerComponent = mly.getComponent('marker');
+	markerComponent.add([mly_start_marker, mly_end_marker]);	
+	start_marker.on('dragend', function(e) {
+		mly_start_marker.setLatLng([e.target._latlng.lat, e.target._latlng.lng]);
+      console.log('marker drag event', e.target._latlng);
+    });
+	*/
 
+
+	//window.addEventListener("resize", function() { mly.resize(); });
 }
 
 </script>
