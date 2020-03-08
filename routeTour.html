@@ -32,9 +32,11 @@
 
 <div id='mly' style='width: 640px; height: 480px;　margin: 10px;'></div>
 <div style='align: center;'>
-<input type="button" style="font-size:50px;" value="⏴" onclick="goBackward()">
-<input type="button" style="font-size:50px;" value="⏸" onclick="stopMove()">
-<input type="button" style="font-size:50px;" value="⏵" onclick="goForward()">
+<input type="button" style="font-size:50px;" title="Play Backward" value="⏴" onclick="goBackward()">
+<input type="button" style="font-size:50px;" title="Prev"  value="↤" onclick="prevImage()">
+<input type="button" style="font-size:50px;" title="Stop"  value="⏸" onclick="stopMove()">
+<input type="button" style="font-size:50px;" title="Next"  value="↦" onclick="nextImage()">
+<input type="button" style="font-size:50px;" title="Play Forward"  value="⏵" onclick="goForward()">
 </div>
 <div id="results"></div>
 <div id="test"></div>
@@ -152,14 +154,31 @@ var findRoute = function(){
 	
 	//add start/end marker on mapillary viewer
 	//how to add text to marker?
-	mly_start_marker = new Mapillary.MarkerComponent.SimpleMarker('mly_start_marker',{ lat: start.lat, lon: start.lng });
-	mly_end_marker = new Mapillary.MarkerComponent.SimpleMarker('mly_end_marker',{ lat: end.lat, lon: end.lng });
+	mly_start_marker = new Mapillary.MarkerComponent.SimpleMarker(
+		'mly_start_marker',
+		{ lat: start.lat, lon: start.lng },
+		{
+			ballColor: "#ffffff",
+			ballOpacity: 0.8,
+			color: "#2880CA",
+		}
+	);
+	mly_end_marker = new Mapillary.MarkerComponent.SimpleMarker(
+		'mly_end_marker',
+		{ lat: end.lat, lon: end.lng },
+		{
+			ballColor: "#ffffff",
+			ballOpacity: 0.8,
+			color: "#2880CA",
+		}
+	);
 	var markerComponent = mly.getComponent('marker');
 	markerComponent.add([mly_start_marker, mly_end_marker]);
 
-	//add route path
+	//add route path with graphhopper
 	let request = new XMLHttpRequest();
-	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=car&locale=ja&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
+	//https://docs.graphhopper.com/
+	const url = 'https://graphhopper.com/api/1/route?point=' + startlat + ',' + startlon + '&point=' + endlat + ',' + endlon + '&vehicle=foot&locale=ja&calc_points=true&key=1d71cf85-3c57-462f-9ecb-3307df72d594&instructions=true';
 	//alert(url);
 	request.open('GET', url , true);
 	request.onload = function () {
@@ -198,8 +217,8 @@ var findRoute = function(){
 				console.log('Marker changed:', e.marker.id, e.marker.latLon);
 			}
 		);
-		
-		moveImage(1);
+		//Show the first image
+		moveImage(0);
 
 
 	}
@@ -231,9 +250,26 @@ var stopMove = function(){
 
 
 function moveImage(move){
+
+	count += move;
+	//ルートの端まで移動したら移動を停止する
+	if (count <0){
+		count = 0;
+		clearInterval(timer);
+	} else if (count > maxcount-1) {
+		count = maxcount;
+		clearInterval(timer);
+	} else {
+		present_marker.setLatLng(L.GeoJSON.coordsToLatLng(finepoints[count]));
+	}
+
+	
 	let request = new XMLHttpRequest();
-	const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&lookat=' + finepoints[count+move][0] + ',' + finepoints[count+move][1] +'&radius=10&pano=false';
-	//document.getElementById('test').innerText = count + '/' + maxcount;
+	//固定画像取得
+	//const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&lookat=' + finepoints[count+move][0] + ',' + finepoints[count+move][1] +'&radius=10&pano=false';
+	//360画像取得
+	let url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&radius=10&pano=true';
+
 
 	request.open('GET', url, true);
 	request.onload = function () {
@@ -251,14 +287,26 @@ function moveImage(move){
 					function(node) { console.log(node.key); },
 					function(error) { console.error(error); });
 
-		};
-		count += move;
-		if (count <1 || count > maxcount-1){
-			clearInterval(timer);
+		} else {
+			let request = new XMLHttpRequest();
+
+			const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&lookat=' + finepoints[count+move][0] + ',' + finepoints[count+move][1] +'&radius=10&pano=false';
+			request.open('GET', url, true);
+			request.onload = function () {
+			const data = this.response;
+				const jsondata = JSON.parse(data);
+				const features = jsondata["features"];
+				if (features.length > 0){
+					const feature = features[0];
+					const properties = feature["properties"];
+					const key = properties["key"];
+					//console.log(key);
+					mly.moveToKey(key)
+				}
+			}
+			request.send();
 		}
-		else {
-			present_marker.setLatLng(L.GeoJSON.coordsToLatLng(finepoints[count]));
-		}
+
 	};
 	request.send();
 
@@ -271,7 +319,7 @@ function initMap() {
 		// client id
 		'NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw',
 		// photo id
-		'NQOAvAiFpxlx7uZvuDAObw',
+		'PWzRSDnsFE2bNfuhKl_b7g',
 		//activate immediately
 		{
 			component: {
@@ -283,7 +331,7 @@ function initMap() {
   //地図を表示するdiv要素のidを設定
   map = L.map('mapcontainer');
   //地図の中心とズームレベルを指定
-  map.setView([35.46045, 139.62993], 16);
+  map.setView([37.48773, 139.93028], 17);
 
   //https://stackoverflow.com/questions/22948096/get-the-bounding-box-of-the-visible-leaflet-map
   map.on('moveend', function() {
@@ -299,12 +347,12 @@ function initMap() {
 	  maxZoom: 21,
 	  maxNativeZoom: 19,
 	  minZoom: 15,
-	  maxBounds: [[35.47, 139.62], [35.45, 139.64]],
+	  //maxBounds: [[35.47, 139.62], [35.45, 139.64]],
   }).addTo(map);
   
-	start_marker = L.marker( [35.461171, 139.630570], { draggable: true }).bindTooltip("Start").addTo( map );
-	end_marker = L.marker( [35.459693, 139.628883], { draggable: true }).bindTooltip("End").addTo( map );
-	present_marker = L.marker(L.GeoJSON.coordsToLatLng([35.461171, 139.630570])).bindTooltip("Present").addTo(map);
+	start_marker = L.marker( [37.48825, 139.92966], { draggable: true }).bindTooltip("Start").addTo( map );
+	end_marker = L.marker( [37.48736, 139.93006], { draggable: true }).bindTooltip("End").addTo( map );
+	present_marker = L.marker([0,0]).bindTooltip("Present").addTo(map);
 	route = L.polyline([], { color: 'blue', weight: 5 }).addTo(map);
 	/*
 	mly_start_marker = new Mapillary.MarkerComponent.SimpleMarker('mly_start_marker',{ lat: 35.461171, lon: 139.630570 });
