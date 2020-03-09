@@ -21,12 +21,14 @@
 </ul>
 
 <input type="button" style="font-size:50px;" value="Find route" onclick="findRoute()">
-
-
+<div id="filters" style="background-color:#ccc">
+<p>Filter your view
 <ul>
-<li>Routing is powered by <a href="https://www.graphhopper.com/">GraphHopper API</a></li>
-<li>Images from <a href="https://www.mapillary.com/">Mapillary</a></li>
+<li>User: <input type="text" size="20" id="usernames" title="Mapillary username" value="">
+<li>Date: From <input type="date" id="start_time" value="">,  To <input type="date" id="end_time" value="">
+<li>360 panoramas <form id="pano"><input type="radio" name="pano" value="prefer" checked="checked">Prefer  <input type="radio" name="pano" value="true">Only  <input type="radio" name="pano" value="false">No</form>
 </ul>
+</div>
 </div>
 
 
@@ -40,6 +42,15 @@
 </div>
 <div id="results"></div>
 <div id="test"></div>
+<div id="attributions" style="margin:50px 10px; float:left">
+<p>Attributions
+<ul>
+<li>Routing is powered by <a href="https://www.graphhopper.com/">GraphHopper API</a></li>
+<li>Images from <a href="https://www.mapillary.com/">Mapillary</a></li>
+<li>Map: <a href="https://www.openstreetmap.org/copyright">(C)OpenStreetMap contributors</a></li>
+<li>Display map: <a href="https://leafletjs.com/">Leaflet</a></li>
+</ul>
+</div>
 <script src="utils.js"></script>
 <script>
 
@@ -263,14 +274,28 @@ function moveImage(move){
 		present_marker.setLatLng(L.GeoJSON.coordsToLatLng(finepoints[count]));
 	}
 
+	//make optional filters
+	let filters = "";
+	const usernames = document.getElementById("usernames").value;
+	const start_time = document.getElementById("start_time").value;	
+	const end_time = document.getElementById("end_time").value;	
+	const pano_elem = document.getElementById("pano");
+	const pano = pano_elem.pano.value;
+	if (usernames != "") filters += '&usernames=' + usernames;
+	if (start_time != "") filters += '&start_time=' + start_time;	
+	if (end_time != "") filters += '&end_time=' + end_time;	
+	
 	
 	let request = new XMLHttpRequest();
 	//固定画像取得
-	//const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&lookat=' + finepoints[count+move][0] + ',' + finepoints[count+move][1] +'&radius=10&pano=false';
+	const url_fixed_image = 'https://a.mapillary.com/v3/images_computed?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&lookat=' + finepoints[count+move][0] + ',' + finepoints[count+move][1] +'&radius=10&pano=false&computed_coordinates' + filters;
 	//360画像取得
-	let url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&radius=10&pano=true';
-
-
+	const url_360_image = 'https://a.mapillary.com/v3/images_computed?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&radius=10&pano=true&computed_coordinates' + filters;
+	
+	//360画像除外のときは固定画像のみ取得
+	let url = url_360_image;
+	if (pano == "false") url = url_fixed_image;
+	
 	request.open('GET', url, true);
 	request.onload = function () {
 		const data = this.response;
@@ -287,10 +312,10 @@ function moveImage(move){
 					function(node) { console.log(node.key); },
 					function(error) { console.error(error); });
 
-		} else {
+		} else if (pano == "prefer"){ //360画像優先のときは、360画像が取得できなかったら固定画像を取得する
 			let request = new XMLHttpRequest();
 
-			const url = 'https://a.mapillary.com/v3/images?client_id=NEh3V0ZjaE1fT1Nkdk9jMnJlSGNQQTplZDBiMjFkZjcxNjFhNjEw&closeto=' + finepoints[count][0] + ',' + finepoints[count][1] + '&lookat=' + finepoints[count+move][0] + ',' + finepoints[count+move][1] +'&radius=10&pano=false';
+			url = url_fixed_image;
 			request.open('GET', url, true);
 			request.onload = function () {
 			const data = this.response;
