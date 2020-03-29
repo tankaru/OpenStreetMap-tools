@@ -4,3 +4,4 @@
 - [See your OSM changeset in the area](https://tankaru.github.io/maptools/YourChangesetsAroundHere.html)
 - [Routefinder with photo at junction](https://tankaru.github.io/maptools/routeFinder.html)
 - [Street level imagery tour along a route](https://tankaru.github.io/maptools/routeTour.html)
+- [OSM latest Hot area](https://tankaru.github.io/maptools/HotMap.html)

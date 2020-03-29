@@ -1,0 +1,157 @@
+<html>
+<head>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css">
+	<script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+	<link rel="stylesheet" href="leaflet-beautify-marker-icon.css" />
+	<script src="leaflet-beautify-marker-icon.js"></script>
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+	<script src="leaflet-heat.js"></script>
+<style type="text/css">
+
+#mapcontainer {
+	width: 640px;
+	height: 480px;
+
+}
+
+#editor {
+	float:left;
+	padding: 10px
+}
+
+#attributions {
+	clear:left;
+	background-color: #ddd;
+}
+
+
+</style>
+</head>
+<body onload="initMap()">
+<h1>HotMap <span id="since"></span></h1>
+<div id="editor">
+    <div id='mapcontainer'></div>
+
+	<input type="button" class="" id="" value="Measure" onclick="measure()">
+
+
+</div>
+
+
+<span id="results"></span>
+
+<div id="attributions">
+<p>Attributions
+<ul>
+<li>Map: <a href="https://www.openstreetmap.org/copyright">(C)OpenStreetMap contributors</a></li>
+<li>Display map: <a href="https://leafletjs.com/">Leaflet</a></li>
+</ul>
+</div>
+<p>Bug report at <a href="https://github.com/tankaru/">Github</a></p>
+<script src="utils.js"></script>
+<script>
+
+let map;
+let changeset_markers;
+let heat;
+const options = {
+	icon: 'edit',
+	iconShape: 'marker',
+	backgroundColor: 'white',
+};
+function measure(){
+	const bbox = map.getBounds().getWest() + ',' + map.getBounds().getSouth() + ',' + map.getBounds().getEast() + ',' + map.getBounds().getNorth();
+	const url = 'https://api.openstreetmap.org/api/0.6/changesets?bbox=' + bbox;
+	const request = new XMLHttpRequest();
+	//request.responseType = 'json';
+	request.open('GET', url, true);
+	request.onload = function () {
+		const data = this.response;
+		//document.getElementById("results").innerText = data;
+
+		const changesets = request.responseXML.getElementsByTagName("changeset");
+		
+		//レイヤ初期化
+		changeset_markers.clearLayers();
+		let heats = [];
+
+		let max_intensity = 1;
+		for (let i=0; i < changesets.length; i++){
+			const changeset = changesets[i];
+			const lat = (Number(changeset.getAttribute("min_lat")) + Number(changeset.getAttribute("max_lat")))/2;
+			const lon = (Number(changeset.getAttribute("min_lon")) + Number(changeset.getAttribute("max_lon")))/2;
+			const marker = L.marker([lat,lon], { icon: L.BeautifyIcon.icon(options), draggable: false });	
+			
+			const changeset_id = changeset.getAttribute("id");
+			const user = changeset.getAttribute("user");
+			const popup_contents = 'changeset: <a href="https://www.openstreetmap.org/changeset/' + changeset_id + '">' + changeset_id + '</a></br>user: <a href="https://www.openstreetmap.org/user/' + user + '">' + user + '</a>'
+			
+			marker.bindPopup(popup_contents);
+			changeset_markers.addLayer(marker).addTo(map);	
+			
+			
+			const changes_count = Number(changeset.getAttribute("changes_count"));
+			const intensity = Math.log(Math.log(changes_count));
+			heats.push([lat, lon, intensity]);
+			max_intensity = Math.max(max_intensity, intensity);
+		}
+		
+		heat.setLatLngs(heats);
+		heat.setOptions({radius: 25, max: max_intensity, maxZoom: map.getZoom()});
+		heat.redraw();
+		//console.log(max_intensity, JSON.stringify(heats));
+		const d =  new Date(changesets[changesets.length-1].getAttribute("created_at"));
+		document.getElementById("since").innerText =", Since: " + d.toLocaleString();
+	};
+	request.send();
+}
+
+//http://ktgis.net/service/leafletlearn/index.html
+function initMap() {
+
+  //地図を表示するdiv要素のidを設定
+  map = L.map('mapcontainer');
+  //地図の中心とズームレベルを指定
+  map.setView([37.9243912, 139.045191], 5);
+
+  //表示するタイルレイヤのURLとAttributionコントロールの記述を設定して、地図に追加する
+  let osmLayer = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	  attribution: "(C)<a href='https://www.openstreetmap.org/copyright' target='_blank'>OpenStreetMap contributors</a>",
+	  maxZoom: 21,
+	  maxNativeZoom: 19,
+	  minZoom: 1,
+	  //maxBounds: [[35.47, 139.62], [35.45, 139.64]],
+  }).addTo(map);
+  var kokudoLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/ort/{z}/{x}/{y}.jpg',{
+    attribution: '© <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
+	});
+	
+	let baseMap = {
+		"OpenStreetMap":osmLayer,
+		"国土地理院オルソ":kokudoLayer,
+	};
+ 
+	var mapillaryLayer = L.tileLayer('https://raster-tiles.mapillary.com/v0.1/{z}/{x}/{y}.png',{
+		attribution: '(C)<a href="https://www.mapillary.com/">Mapillary</a>, CC BY',
+	  maxZoom: 21,
+	  maxNativeZoom: 17,
+	});
+	mapillaryLayer.setOpacity(0.65);
+	var overlayLayer = {
+		"Mapillary":mapillaryLayer,
+	}
+
+	//レイヤ設定
+	var layerControl = L.control.layers(baseMap,overlayLayer,{"collapsed":true,});
+	layerControl.addTo(map);
+	
+	//レイヤ初期化
+	changeset_markers = L.layerGroup([]).addTo(map);
+	heat = L.heatLayer([]).addTo(map);
+
+}
+
+</script>
+</body>
+</html>
+
