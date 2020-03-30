@@ -1,0 +1,254 @@
+<html>
+<head>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css">
+	<script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+	<link rel="stylesheet" href="leaflet-beautify-marker-icon.css" />
+	<script src="leaflet-beautify-marker-icon.js"></script>
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+	<script src="leaflet-heat.js"></script>
+<style type="text/css">
+
+#mapcontainer {
+	width: 640px;
+	height: 480px;
+
+}
+
+#editor {
+	float:left;
+	padding: 10px
+}
+
+#attributions {
+	clear:left;
+	background-color: #ddd;
+}
+
+
+</style>
+</head>
+<body onload="initMap()">
+<h1>Dynamic HotMap <span id="since"></span></h1>
+<div id="editor">
+    <div id='mapcontainer'></div>
+
+	<input type="button" class="" id="" value="Measure" onclick="measure()">
+	<input type="button" class="" id="" value="Play again" onclick="playagain()">
+	<p>Show latest changesets as a heatmap.</p>
+
+</div>
+
+
+<span id="results"></span>
+
+<div id="attributions">
+<p>Attributions
+<ul>
+<li>Map: <a href="https://www.openstreetmap.org/copyright">(C)OpenStreetMap contributors</a></li>
+<li>Display map: <a href="https://leafletjs.com/">Leaflet</a></li>
+</ul>
+</div>
+<p>Bug report at <a href="https://github.com/tankaru/">Github</a></p>
+<script src="utils.js"></script>
+<script>
+
+let map;
+let changeset_markers;
+let heatmap;
+let heats;
+let max_intensity;
+const options = {
+	icon: 'edit',
+	iconShape: 'marker',
+	backgroundColor: 'white',
+};
+
+function getChangesets(bbox, since, until){
+	const url = 'https://api.openstreetmap.org/api/0.6/changesets?bbox=' + bbox + '&time=' + since + ',' + until;
+	console.log(url);
+	const request = new XMLHttpRequest();
+	//request.responseType = 'json';
+	request.open('GET', url, false);//同期処理
+	request.send(null);
+	if (request.status === 200) {
+		const data = this.response;
+
+		const changesetsXML = request.responseXML.getElementsByTagName("changeset");
+		let changesets = [];
+		for (let i=0; i < changesetsXML.length; i++){
+			changesets.push({
+				'id': changesetsXML[i].getAttribute("id"),
+				'created_at':changesetsXML[i].getAttribute("created_at"),
+				'changes_count':changesetsXML[i].getAttribute("changes_count"),
+				'closed_at':changesetsXML[i].getAttribute("closed_at"),
+				'min_lat':changesetsXML[i].getAttribute("min_lat"),
+				'min_lon':changesetsXML[i].getAttribute("min_lon"),
+				'max_lat':changesetsXML[i].getAttribute("max_lat"),
+				'max_lon':changesetsXML[i].getAttribute("max_lon"),
+				'user':changesetsXML[i].getAttribute("user"),
+			});
+		}
+		//console.log(JSON.stringify(changesets));	
+		return changesets;
+	} else {
+		return [];
+	}
+
+}
+
+function showHeatMap(heats, max_intensity){
+	heatmap.setLatLngs(heats);
+	heatmap.setOptions({radius: 25, max: max_intensity, maxZoom: map.getZoom()});
+	heatmap.redraw();
+}
+//https://www.sejuku.net/blog/24629
+function sleep(waitSec, callbackFunc) {
+ 
+  var spanedSec = 0;
+ 
+  var waitFunc = function () {
+ 
+      spanedSec++;
+ 
+      if (spanedSec >= waitSec) {
+          if (callbackFunc) callbackFunc();
+          return;
+      }
+ 
+      clearTimeout(id);
+      id = setTimeout(waitFunc, 1000);
+  
+  };
+ 
+  var id = setTimeout(waitFunc, 1000);
+ 
+}
+
+function playagain(){
+	play(heats, max_intensity);
+}
+
+function play(heats, max_intensity){
+	const part_heat_size = 100;
+	const map_number = 100;
+	const heats_size = heats.length;
+	const steps = Math.floor((heats_size - part_heat_size)/(map_number-1));
+	let part_of_heats;
+	
+
+	var showheat = function (){
+		showHeatMap(part_of_heats, max_intensity);
+	}
+	let i = 0;
+	let timer = setInterval(function(){
+		part_of_heats = heats.slice(i*steps, i*steps+part_heat_size);
+		showHeatMap(part_of_heats, max_intensity);
+		i++;
+		if (i>map_number-1) clearInterval(timer);
+		}
+	,100);
+
+}
+
+function measure(){
+	const bbox = map.getBounds().getWest() + ',' + map.getBounds().getSouth() + ',' + map.getBounds().getEast() + ',' + map.getBounds().getNorth();
+	
+	let changesetss = [];
+	const T1 = '2000-01-01T00:00:00';//十分古い時間
+	let T2 = '2100-01-01T00:00:00';//未来の時間
+	for (let i=0; i<4; i++){
+		const changesets = getChangesets(bbox, T1, T2);
+		//console.log(JSON.stringify(changesets));		
+		changesetss = changesetss.concat(changesets);
+		T2 = changesets[changesets.length-1]["created_at"];
+	}
+
+	const changesets = changesetss;
+	
+	//レイヤ初期化
+	changeset_markers.clearLayers();
+	heats = [];
+
+	max_intensity = 1;
+	//console.log(JSON.stringify(changesets));	
+	for (let i=0; i < changesets.length; i++){
+		const changeset = changesets[i];
+		const lat = (Number(changeset["min_lat"]) + Number(changeset["max_lat"]))/2;
+		const lon = (Number(changeset["min_lon"]) + Number(changeset["max_lon"]))/2;
+		const marker = L.marker([lat,lon], { icon: L.BeautifyIcon.icon(options), draggable: false });	
+		/*
+		const changeset_id = changeset["id"];
+		const user = changeset["user"];
+		const popup_contents = 'changeset: <a href="https://www.openstreetmap.org/changeset/' + changeset_id + '">' + changeset_id + '</a></br>user: <a href="https://www.openstreetmap.org/user/' + user + '">' + user + '</a>'
+		
+		marker.bindPopup(popup_contents);
+		changeset_markers.addLayer(marker).addTo(map);	
+		*/
+		
+		const changes_count = Number(changeset["changes_count"]);
+		const intensity = Math.log(Math.log(changes_count));
+		heats.push([lat, lon, intensity]);
+		max_intensity = Math.max(max_intensity, intensity);
+	}
+
+	const d =  new Date(changesets[changesets.length-1]["created_at"]);
+	document.getElementById("since").innerText =", Since: " + d.toLocaleString();
+	
+	play(heats, max_intensity);
+
+
+
+	//console.log(max_intensity, JSON.stringify(heats));
+
+
+}
+
+//http://ktgis.net/service/leafletlearn/index.html
+function initMap() {
+
+  //地図を表示するdiv要素のidを設定
+  map = L.map('mapcontainer');
+  //地図の中心とズームレベルを指定
+  map.setView([37.9243912, 139.045191], 5);
+
+  //表示するタイルレイヤのURLとAttributionコントロールの記述を設定して、地図に追加する
+  let osmLayer = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	  attribution: "(C)<a href='https://www.openstreetmap.org/copyright' target='_blank'>OpenStreetMap contributors</a>",
+	  maxZoom: 21,
+	  maxNativeZoom: 19,
+	  minZoom: 1,
+	  //maxBounds: [[35.47, 139.62], [35.45, 139.64]],
+  }).addTo(map);
+  var kokudoLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/ort/{z}/{x}/{y}.jpg',{
+    attribution: '© <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
+	});
+	
+	let baseMap = {
+		"OpenStreetMap":osmLayer,
+		"国土地理院オルソ":kokudoLayer,
+	};
+ 
+	var mapillaryLayer = L.tileLayer('https://raster-tiles.mapillary.com/v0.1/{z}/{x}/{y}.png',{
+		attribution: '(C)<a href="https://www.mapillary.com/">Mapillary</a>, CC BY',
+	  maxZoom: 21,
+	  maxNativeZoom: 17,
+	});
+	mapillaryLayer.setOpacity(0.65);
+	var overlayLayer = {
+		"Mapillary":mapillaryLayer,
+	}
+
+	//レイヤ設定
+	var layerControl = L.control.layers(baseMap,overlayLayer,{"collapsed":true,});
+	layerControl.addTo(map);
+	
+	//レイヤ初期化
+	changeset_markers = L.layerGroup([]).addTo(map);
+	heatmap = L.heatLayer([]).addTo(map);
+
+}
+
+</script>
+</body>
+</html>
+
