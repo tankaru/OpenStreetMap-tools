@@ -32,7 +32,7 @@
 <div id="editor">
     <div id='mapcontainer'></div>
 
-	<input type="button" class="" id="" value="Measure" onclick="measure()">
+	<input type="button" class="" id="" value="Measure" onclick="measure()"><span id="waitnotice"></span>
 <p>Show latest changesets as a heatmap.</p>
 
 </div>
@@ -62,6 +62,7 @@ const options = {
 	backgroundColor: 'white',
 };
 function measure(){
+	document.getElementById("waitnotice").innerText = "Wait for a while";
 	const bbox = map.getBounds().getWest() + ',' + map.getBounds().getSouth() + ',' + map.getBounds().getEast() + ',' + map.getBounds().getNorth();
 	const url = 'https://api.openstreetmap.org/api/0.6/changesets?bbox=' + bbox;
 	const request = new XMLHttpRequest();
@@ -104,6 +105,7 @@ function measure(){
 		//console.log(max_intensity, JSON.stringify(heats));
 		const d =  new Date(changesets[changesets.length-1].getAttribute("created_at"));
 		document.getElementById("since").innerText =", Since: " + d.toLocaleString();
+		document.getElementById("waitnotice").innerText = "";
 	};
 	request.send();
 }

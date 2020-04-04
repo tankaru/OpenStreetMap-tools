@@ -33,7 +33,7 @@
     <div id='mapcontainer'></div>
 
 	<input type="button" class="" id="" value="Measure" onclick="measure()">
-	<input type="button" class="" id="" value="Play again" onclick="playagain()">
+	<input type="button" class="" id="" value="Play again" onclick="playagain()"><span id="waitnotice"></span>
 	<p>Show latest changesets as a heatmap.</p>
 
 </div>
@@ -152,6 +152,8 @@ function play(heats, max_intensity){
 }
 
 function measure(){
+	document.getElementById("waitnotice").innerText = "Wait for a while";
+
 	const bbox = map.getBounds().getWest() + ',' + map.getBounds().getSouth() + ',' + map.getBounds().getEast() + ',' + map.getBounds().getNorth();
 	
 	let changesetss = [];
@@ -163,7 +165,7 @@ function measure(){
 		changesetss = changesetss.concat(changesets);
 		T2 = changesets[changesets.length-1]["created_at"];
 	}
-
+	document.getElementById("waitnotice").innerText = "";
 	const changesets = changesetss;
 	
 	//レイヤ初期化
@@ -194,7 +196,8 @@ function measure(){
 
 	const d =  new Date(changesets[changesets.length-1]["created_at"]);
 	document.getElementById("since").innerText =", Since: " + d.toLocaleString();
-	
+
+		
 	play(heats, max_intensity);
 
 
