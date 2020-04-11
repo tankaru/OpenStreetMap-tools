@@ -87,7 +87,26 @@ function measure(){
 			
 			const changeset_id = changeset.getAttribute("id");
 			const user = changeset.getAttribute("user");
-			const popup_contents = 'changeset: <a href="https://www.openstreetmap.org/changeset/' + changeset_id + '">' + changeset_id + '</a></br>user: <a href="https://www.openstreetmap.org/user/' + user + '">' + user + '</a>'
+			
+			const tags = changeset.getElementsByTagName("tag");
+			//alert(JSON.stringify(changeset.getElementsByTagName("tag")));
+
+			let comment = "";
+			for (let j = 0; j < tags.length; j++) {
+				tag = tags[j];
+				c = tag.getAttribute("k");
+
+				if (c == "comment"){
+					comment = tag.getAttribute("v");
+					break;
+				}
+			}
+			
+			
+			const popup_contents = 
+			'changeset: <a href="https://www.openstreetmap.org/changeset/' + changeset_id + '">' + changeset_id + '</a><br/>'
+			+ 'user: <a href="https://www.openstreetmap.org/user/' + user + '">' + user + '</a><br/>'
+			+ 'Comment: ' + comment;
 			
 			marker.bindPopup(popup_contents);
 			changeset_markers.addLayer(marker).addTo(map);	
