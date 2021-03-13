@@ -37,10 +37,12 @@ function showChangesets(lat, lon, zoom, user, since){
 	const [minlon, minlat, maxlon, maxlat] = latLonZoomToBbox(lat, lon, zoom);
 	const bbox = '' + minlon + ',' + minlat + ',' + maxlon + ',' + maxlat;
 
-
+	let url = 'https://api.openstreetmap.org/api/0.6/changesets?bbox=' + bbox;
+	if (user != "") {url += '&display_name=' + user;};
+	if (since != "") {url += '&time=' + since;};
 	let request = new XMLHttpRequest();
-	request.open('GET', 'https://api.openstreetmap.org/api/0.6/changesets?bbox=' + bbox + '&display_name=' + user + '&time=' + since, true);
-	request.responseType = 'json';
+	request.open('GET', url, true);
+	//request.responseType = 'json';
 	request.onload = function () {
 		const data = this.response;
 		//document.getElementById('results').innerText = data;
